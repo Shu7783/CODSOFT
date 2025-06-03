@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Basic Calculator</title>
+<style>
+  :root {
+    --main-bg: #222831;
+    --btn-bg: #393E46;
+    --btn-hover-bg: #00ADB5;
+    --btn-active-bg: #009CA7;
+    --btn-color: #EEEEEE;
+    --accent-color: #00ADB5;
+    --display-bg: #121619;
+    --display-color: #EEEEEE;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background: var(--main-bg);
+    color: var(--btn-color);
+    font-family: var(--font-family);
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .calculator {
+    background: var(--btn-bg);
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+    width: 320px;
+  }
+
+  .display {
+    background: var(--display-bg);
+    color: var(--display-color);
+    font-size: 2.2rem;
+    padding: 20px;
+    border-radius: 15px 15px 0 0;
+    text-align: right;
+    overflow-wrap: break-word;
+    min-height: 60px;
+    user-select: none;
+  }
+
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 10px;
+    padding: 20px;
+  }
+
+  button {
+    background: var(--btn-bg);
+    color: var(--btn-color);
+    border: none;
+    border-radius: 10px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: background 0.3s;
+    box-shadow: 0 4px #222;
+    user-select: none;
+  }
+
+  button:active {
+    box-shadow: 0 2px #222;
+    transform: translateY(2px);
+    background: var(--btn-active-bg);
+  }
+
+  button:hover {
+    background: var(--btn-hover-bg);
+  }
+
+  button.operator {
+    background: var(--accent-color);
+    color: #121619;
+  }
+
+  button.operator:hover {
+    background: #00858c;
+  }
+
+  button.span-two {
+    grid-column: span 2;
+  }
+
+</style>
+</head>
+<body>
+<div class="calculator" role="application" aria-label="Basic calculator">
+  <div id="display" class="display" aria-live="polite" aria-atomic="true">0</div>
+  <div class="buttons">
+    <button aria-label="Clear" id="clear">C</button>
+    <button aria-label="Delete" id="delete">⌫</button>
+    <button aria-label="Divide" class="operator" data-operator="/">÷</button>
+    <button aria-label="Multiply" class="operator" data-operator="*">×</button>
+
+    <button aria-label="7">7</button>
+    <button aria-label="8">8</button>
+    <button aria-label="9">9</button>
+    <button aria-label="Subtract" class="operator" data-operator="-">−</button>
+
+    <button aria-label="4">4</button>
+    <button aria-label="5">5</button>
+    <button aria-label="6">6</button>
+    <button aria-label="Add" class="operator" data-operator="+">+</button>
+
+    <button aria-label="1">1</button>
+    <button aria-label="2">2</button>
+    <button aria-label="3">3</button>
+    <button aria-label="Equals" class="operator" id="equals">=</button>
+
+    <button aria-label="0" class="span-two">0</button>
+    <button aria-label="Decimal point">.</button>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const display = document.getElementById('display');
+    const buttons = document.querySelectorAll('button');
+    let currentInput = '';
+    let lastResult = null;
+    let lastOperator = null;
+    let resetNext = false;
+
+    function updateDisplay(value) {
+      display.textContent = value;
+    }
+
+    function isOperator(char) {
+      return ['+', '-', '*', '/'].includes(char);
+    }
+
+    function safeEval(expression) {
+      // Evaluate the expression safely using Function constructor
+      // Will catch any error during eval
+      try {
+        // Remove trailing operator if any
+        if (expression.length > 0 && isOperator(expression[expression.length - 1])) {
+          expression = expression.slice(0, -1);
+        }
+        let result = Function('"use strict";return (' + expression + ')')();
+        if (result === Infinity || result === -Infinity) {
+          return 'Error';
+        }
+        return result;
+      } catch (e) {
+        return 'Error';
+      }
+    }
+
+    function handleInput(value) {
+      if (resetNext) {
+        if (!isOperator(value)) {
+          currentInput = '';
+          resetNext = false;
+        }
+      }
+
+      if (value === '.') {
+        // Prevent multiple decimals in a number segment
+        const parts = currentInput.split(/[\+\-\*\/]/);
+        const lastPart = parts[parts.length - 1];
+        if (lastPart.includes('.')) {
+          return;
+        }
+      }
+
+      if (isOperator(value)) {
+        // Prevent two operators in a row except negative sign after operator
+        if (currentInput === '' && value !== '-') {
+          return; // Prevent starting with operator other than -
+        }
+        if (currentInput !== '' && isOperator(currentInput[currentInput.length - 1])) {
+          // Replace last operator with new one (except for minus following another operator)
+          if (!(value === '-' && currentInput[currentInput.length - 1] !== '-')) {
+            currentInput = currentInput.slice(0, -1);
+          }
+        }
+      }
+
+      currentInput += value;
+      updateDisplay(currentInput);
+    }
+
+    function clearAll() {
+      currentInput = '';
+      updateDisplay('0');
+    }
+
+    function deleteLast() {
+      if (resetNext) {
+        clearAll();
+        resetNext = false;
+        return;
+      }
+      currentInput = currentInput.slice(0, -1);
+      updateDisplay(currentInput === '' ? '0' : currentInput);
+    }
+
+    function calculate() {
+      if (currentInput === '') return;
+      const result = safeEval(currentInput);
+      updateDisplay(result);
+      currentInput = result.toString();
+      resetNext = true;
+    }
+
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        const val = button.textContent;
+        if (button.id === 'clear') {
+          clearAll();
+          return;
+        }
+        if (button.id === 'delete') {
+          deleteLast();
+          return;
+        }
+        if (button.id === 'equals') {
+          calculate();
+          return;
+        }
+        handleInput(val);
+      });
+    });
+  })();
+</script>
+</body>
+</html>
+
